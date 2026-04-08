@@ -1,0 +1,317 @@
+MILANO ANALYZER - FORMULAS WITH EXPLANATIONS
+==============================================
+
+All calculations are in src/App.jsx, inside the runCalculations() function.
+
+
+================================================================================
+1. AREA & SPACE CALCULATIONS
+================================================================================
+
+  footprint        = landArea x BCR
+  farGfa           = landArea x FAR
+  floorCappedGfa   = footprint x maxFloors
+  gfa              = min(farGfa, floorCappedGfa)
+  actualFloors     = gfa / footprint
+  netArea          = gfa x 0.85
+
+  What this does:
+  - BCR (Building Coverage Ratio) tells you how much of the land you can cover
+    with a building. If you have 1000 m2 land and BCR = 0.4, your building
+    footprint can be max 400 m2.
+
+  - FAR (Floor Area Ratio) limits the total floor area. If FAR = 2.0 on
+    1000 m2 land, you can build up to 2000 m2 total across all floors.
+
+  - We calculate GFA two ways: one from FAR, one from footprint x max floors.
+    The smaller one wins (that's the legal limit).
+
+  - Net Area = 85% of GFA. The other 15% goes to stairs, elevators, walls,
+    lobbies, mechanical rooms. This is the area you can actually sell or rent.
+
+
+================================================================================
+2. HARD COSTS (Construction)
+================================================================================
+
+  baseConstruction   = gfa x costPerM2 x (1 + conditionMultiplier)
+  mep                = baseConstruction x 0.175
+  facadeLandscaping  = baseConstruction x 0.10
+  hardCosts          = baseConstruction + mep + facadeLandscaping
+
+  Construction cost per m2 depends on quality:
+    Economy    = 1,500 EUR/m2
+    Mid-Range  = 2,000 EUR/m2
+    Luxury     = 3,000 EUR/m2
+
+  Land condition adds extra cost:
+    Flat         = +0%    (ready to build)
+    Sloped       = +15%   (needs grading/retaining walls)
+    Demolition   = +20%   (existing structure must come down)
+    Contaminated = +35%   (environmental cleanup required)
+
+  What this does:
+  - baseConstruction is the core building cost, adjusted for site difficulty.
+  - MEP (Mechanical, Electrical, Plumbing) adds 17.5% on top. This covers
+    heating, cooling, wiring, plumbing, fire systems.
+  - Facade & Landscaping adds 10% for the exterior finish and outdoor areas.
+  - Hard costs = everything physical about the building.
+
+
+================================================================================
+3. SOFT COSTS (Professional Services & Fees)
+================================================================================
+
+  All percentages are based on hardCosts:
+
+  architect      = hardCosts x 0.10      (10%)
+  engineers      = hardCosts x 0.075     (7.5%)
+  permits        = hardCosts x 0.015     (1.5%)
+  legalNotary    = hardCosts x 0.015     (1.5%)
+  projectMgmt    = hardCosts x 0.04      (4%)
+  marketing      = hardCosts x 0.015     (1.5%, only if selling)
+  insurance      = hardCosts x 0.0075    (0.75%)
+  contingency    = hardCosts x 0.075     (7.5%)
+
+  softCosts = sum of all above
+
+  What this does:
+  - These are all the non-construction costs: design, legal, permits, etc.
+  - Marketing is only added when you plan to sell (not for rental projects).
+  - Contingency (7.5%) is a safety buffer for unexpected costs.
+  - Total soft costs are roughly 33-34% of hard costs.
+
+
+================================================================================
+4. LAND & SITE COSTS
+================================================================================
+
+  utilities   = 26,000 EUR  (water 12,500 + electric 6,500 + gas 5,000 + fiber 2,000)
+  geoSurvey   = 10,000 EUR
+  sitePrep    = footprint x 100 EUR/m2   (only if Demolition, otherwise 0)
+
+  landSiteCosts = landPrice + utilities + geoSurvey + sitePrep
+
+  What this does:
+  - Land price is what you pay to buy the plot.
+  - Utilities are fixed connection fees to hook up water, power, gas, internet.
+  - Geotechnical survey checks soil conditions before you dig foundations.
+  - Site prep only applies if there's an existing building to demolish (100 EUR/m2).
+
+
+================================================================================
+5. FINANCING
+================================================================================
+
+  totalBeforeFinancing = hardCosts + softCosts + landSiteCosts
+  loanAmount           = totalBeforeFinancing x (debtRatio / 100)
+  constructionInterest = loanAmount x (interestRate / 100) x (constructionDuration / 12)
+  loanFees             = loanAmount x 0.015
+  financingCosts       = constructionInterest + loanFees
+
+  totalProjectCost     = totalBeforeFinancing + financingCosts
+  equityInvested       = totalProjectCost - loanAmount
+
+  What this does:
+  - You don't pay all cash. Debt ratio says how much comes from a bank loan.
+    If debt ratio = 60%, the bank covers 60% of costs, you put in 40%.
+  - Construction interest = interest you pay during the build period.
+    It's simple interest: loan x rate x time.
+  - Loan fees (1.5%) are the bank's origination/processing charge.
+  - totalProjectCost = everything you spend, including financing.
+  - equityInvested = your own money in the deal (total cost minus loan).
+
+
+================================================================================
+6. SALE REVENUE (Exit Strategy: Sell)
+================================================================================
+
+  totalSales = netArea x salePricePerM2
+  brokerFee  = totalSales x 0.03
+  netSales   = totalSales - brokerFee
+
+  What this does:
+  - You sell the finished apartments/offices at market price per m2.
+  - Broker takes 3% commission.
+  - Net sales = what actually lands in your account.
+
+
+================================================================================
+7. RENTAL REVENUE (Exit Strategy: Rent)
+================================================================================
+
+  vacancyRate     = 0.08 for Residential/Mixed, 0.10 for Office
+  grossAnnualRent = netArea x rentPerM2PerMonth x 12 x (1 - vacancyRate)
+  opex            = grossAnnualRent x 0.25
+  noi             = grossAnnualRent - opex
+
+  What this does:
+  - Vacancy rate accounts for months when units sit empty between tenants.
+    Offices have higher vacancy (10%) than residential (8%).
+  - Gross rent is the full annual income after vacancy deduction.
+  - OpEx (25%) covers property management, maintenance, taxes, insurance.
+  - NOI (Net Operating Income) = what you keep after operating expenses.
+    This is THE key number for rental properties.
+
+
+================================================================================
+8. PROFITABILITY METRICS - SALE STRATEGY
+================================================================================
+
+  grossProfit    = netSales - totalProjectCost
+  profitMargin   = (grossProfit / netSales) x 100
+  roi            = (grossProfit / totalProjectCost) x 100
+  roe            = (grossProfit / equityInvested) x 100
+
+  salesPeriod    = 6 months (time to sell after construction)
+  totalYears     = max(1, (constructionDuration + salesPeriod) / 12)
+  annualizedRoi  = ((1 + grossProfit / totalProjectCost) ^ (1 / totalYears) - 1) x 100
+  annualizedRoe  = ((1 + grossProfit / equityInvested) ^ (1 / totalYears) - 1) x 100
+
+  breakEvenPerM2 = totalProjectCost / netArea
+
+  What this does:
+  - Gross Profit = simple difference between what you earn and what you spend.
+  - Profit Margin = what % of your revenue is profit. Higher is better.
+    Example: 25% margin means you keep 25 cents of every euro earned.
+  - ROI = return on total investment. "I spent 10M and made 2M profit = 20% ROI."
+  - ROE = return on YOUR money only. Because you used a loan, your equity
+    earns a higher % than the total ROI. This is the leverage effect.
+  - Annualized ROI/ROE = same returns but spread per year. A 20% ROI over
+    2 years is roughly 10% per year. Useful for comparing projects of
+    different durations.
+  - Break-even price = the minimum sale price per m2 where you don't lose money.
+
+
+================================================================================
+9. PROFITABILITY METRICS - RENTAL STRATEGY
+================================================================================
+
+  capRate     = (noi / totalProjectCost) x 100
+  cashOnCash  = (noi / equityInvested) x 100
+  roe         = (npv / equityInvested) x 100
+
+  What this does:
+  - Cap Rate = annual NOI divided by total property cost. The standard way
+    to value rental properties. A 5% cap rate means you earn 5% of the
+    property value each year in net income.
+    Lower cap rate = more expensive market. Milano center ~ 3-4%.
+    Higher cap rate = cheaper/riskier area.
+  - Cash-on-Cash = same idea but only on YOUR money (equity). Because of
+    leverage, this is higher than cap rate.
+  - ROE (NPV-based) = a fuller picture that includes 10 years of future
+    cash flows and property appreciation (from DCF analysis below).
+
+
+================================================================================
+10. WACC (Weighted Average Cost of Capital)
+================================================================================
+
+  taxRate      = 0.24  (Italian corporate tax, 24%)
+  costOfEquity = targetIRR / 100
+  costOfDebt   = (interestRate / 100) x (1 - taxRate)
+  wacc         = (equityRatio / 100) x costOfEquity + (debtRatio / 100) x costOfDebt
+
+  What this does:
+  - WACC blends the cost of your two money sources: equity and debt.
+  - Cost of equity = what return you demand on your own money (= your target IRR).
+  - Cost of debt = interest rate, reduced by the tax shield.
+    In Italy, interest payments are tax-deductible for companies (24% corporate tax),
+    so the effective borrowing cost is lower.
+  - WACC is used as the discount rate in DCF analysis. It represents the
+    minimum return the project must generate to satisfy both you and the bank.
+
+  Example:
+    60% equity at 15% target IRR + 40% debt at 4% interest (after tax = 3.04%)
+    WACC = 0.60 x 0.15 + 0.40 x 0.0304 = 0.090 + 0.012 = 10.2%
+
+
+================================================================================
+11. DCF ANALYSIS (10-Year Rental Hold)
+================================================================================
+
+  growthRate = 0.02  (2% annual rent growth)
+
+  For each year y = 1 to 10:
+    cashFlow[y]   = noi x (1 + growthRate) ^ y
+    discounted[y] = cashFlow[y] / (1 + wacc) ^ y
+
+  dcfSum = sum of all discounted cash flows
+
+  terminalValue      = (noi x (1 + growthRate) ^ 11) / (wacc - growthRate)
+  discountedTerminal = terminalValue / (1 + wacc) ^ 10
+  npv                = dcfSum + discountedTerminal - totalProjectCost
+
+  What this does:
+  - DCF = Discounted Cash Flow. The idea: money in the future is worth less
+    than money today. So we "discount" future income back to today's value.
+
+  - Each year, rent grows by 2% (inflation/market growth).
+  - Each year's income is divided by (1 + WACC)^year to get today's value.
+    Year 1 income is barely discounted. Year 10 income is discounted a lot.
+
+  - Terminal Value = the property's value at the end of year 10, assuming
+    rents keep growing forever. Uses the Gordon Growth Model:
+    TV = Year 11 NOI / (WACC - growth rate).
+    This is usually the biggest chunk of total value.
+
+  - NPV = total present value of all future cash flows minus what you spent.
+    NPV > 0 means the project earns MORE than your required return (WACC).
+    NPV < 0 means it doesn't meet your return target.
+
+  Example:
+    If NPV = +2,000,000 EUR, it means the project creates 2M in value
+    above and beyond your minimum required return.
+
+
+================================================================================
+12. RISK SCORE (0 to 10)
+================================================================================
+
+  The risk score adds up points from three factors:
+
+  Debt Ratio:
+    > 70%     = +3 points  (high leverage = high risk)
+    50-70%    = +2 points
+    < 50%     = +1 point
+
+  Profitability:
+    Sale strategy  -> Profit Margin < 10% = +3, 10-20% = +2, > 20% = +1
+    Rent strategy  -> Cap Rate < 4% = +3, 4-6% = +2, > 6% = +1
+
+  Land Condition:
+    Contaminated  = +3 points
+    Demolition    = +2 points
+    Sloped        = +1 point
+    Flat          = +0 points
+
+  riskScore = min(10, total points)
+
+  What this does:
+  - Combines the three biggest risk factors into one simple number.
+  - 1-3 = low risk (green), 4-6 = moderate (yellow), 7-10 = high risk (red).
+  - High debt = risky because you must repay the bank regardless of outcome.
+  - Low profit margin / cap rate = thin cushion, small errors can cause losses.
+  - Bad land condition = unpredictable costs (especially contamination).
+
+
+================================================================================
+CALCULATION ORDER
+================================================================================
+
+  The formulas run in this exact sequence:
+
+  1. Area calculations (GFA, net area)
+  2. Hard costs (construction + MEP + facade)
+  3. Soft costs (professionals + fees)
+  4. Land & site costs (purchase + utilities + prep)
+  5. Financing costs (interest + loan fees)
+  6. Total project cost & equity invested
+  7. Revenue (sell or rent, depending on strategy)
+  8. Financial metrics (ROI, ROE, Cap Rate, etc.)
+  9. WACC
+  10. DCF & NPV (rental strategy only)
+  11. Risk score
+
+  Each step depends on the ones before it. You can't calculate ROI without
+  knowing both costs and revenue first.

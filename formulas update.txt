@@ -1,0 +1,55 @@
+I need to fix some formula errors in the Milano Analyzer. Please update these calculations in src/App.jsx:
+
+1. PROFIT MARGIN - Currently WRONG:
+Current: profitMargin = (grossProfit / totalProjectCost) × 100
+Fix to: profitMargin = (grossProfit / netSalesRevenue) × 100
+
+Profit margin should be profit/revenue, not profit/cost. They measure different things.
+
+2. WACC TAX SHIELD - Add flexibility:
+Current: costOfDebt = (interestRate / 100) × (1 - 0.24)
+Issue: Tax shield only applies to corporate entities in Italy, not individuals
+
+Add a new constant:
+const isCorporateEntity = true; // or make this a user input later
+
+Then:
+const taxRate = isCorporateEntity ? 0.24 : 0;
+const costOfDebt = (inputs.interestRate / 100) × (1 - taxRate);
+
+3. RENTAL STRATEGY ROE - Currently incomplete:
+Current: roe = (noi / equityInvestment) × 100
+Issue: This is cash-on-cash return, not true ROE
+
+For rental strategy, calculate:
+const cashOnCashReturn = (noi / calc.equityInvestment) × 100;
+const rentalRoe = (calc.npv / calc.equityInvestment) × 100;
+
+Display both metrics - rename current "ROE" to "Cash-on-Cash Return" and add NPV-based ROE.
+
+4. ANNUALIZED RETURNS - Add safety check:
+Current: 
+const years = inputs.constructionDuration / 12;
+annualizedRoi = ((1 + roi/100) ^ (1 / years) - 1) × 100
+
+Fix to:
+const salesPeriod = 6; // months to sell after construction
+const totalYears = Math.max(1, (inputs.constructionDuration + salesPeriod) / 12);
+const annualizedRoi = ((1 + calc.roi/100) ** (1 / totalYears) - 1) × 100;
+const annualizedRoe = ((1 + calc.roe/100) ** (1 / totalYears) - 1) × 100;
+
+This prevents division errors and accounts for post-construction sales time.
+
+5. DCF TERMINAL VALUE - Use Exit Cap Rate (optional improvement):
+Current uses Gordon Growth Model. Consider adding exit cap rate approach:
+
+const exitCapRate = 0.05; // 5% assumption
+const year10NOI = calc.noi × Math.pow(1 + constants.rentGrowth, 10);
+const terminalPropertyValue = year10NOI / exitCapRate;
+const discountedTerminal = terminalPropertyValue / Math.pow(1 + calc.wacc, 10);
+
+This is more conservative and industry-standard for real estate.
+
+Please implement fixes 1-4 immediately. Fix 5 is optional for later.
+
+After making changes, ensure all calculations still work and display correctly in the dashboard.

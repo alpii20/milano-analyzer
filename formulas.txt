@@ -1,0 +1,173 @@
+MILANO ANALYZER - COMPLETE FORMULA REFERENCE
+=============================================
+
+All formulas are in src/App.jsx
+
+
+1. AREA & SPACE CALCULATIONS
+-----------------------------
+
+  footprint = landArea × BCR
+  farGfa = landArea × FAR
+  floorCappedGfa = footprint × maxFloors
+  gfa = min(farGfa, floorCappedGfa)
+  actualFloors = gfa / footprint
+  netArea = gfa × 0.85
+  maxFarFloors = ceil(farGfa / footprint)
+
+  Notes:
+  - Net area assumes 15% loss for common areas, mechanical, walls
+  - GFA is the lesser of FAR-based and floor-capped values (binding constraint)
+
+
+2. HARD COSTS
+-------------
+
+  baseConstruction = gfa × baseCostPerM2 × (1 + conditionMultiplier)
+  mep = baseConstruction × 0.175
+  facadeLandscaping = baseConstruction × 0.10
+  hardCosts = baseConstruction + mep + facadeLandscaping
+
+  Land Condition Multipliers:
+    Flat          = 0.00  (no additional cost)
+    Sloped        = 0.15  (15% additional)
+    Demolition    = 0.20  (20% additional)
+    Contaminated  = 0.35  (35% additional)
+
+
+3. SOFT COSTS (all as % of hardCosts)
+--------------------------------------
+
+  architect    = hardCosts × 0.10     (10%)
+  engineers    = hardCosts × 0.075    (7.5%)
+  permits      = hardCosts × 0.015    (1.5%)
+  legalNotary  = hardCosts × 0.015    (1.5%)
+  projectMgmt  = hardCosts × 0.04     (4%)
+  marketing    = hardCosts × 0.015    (1.5%, Sale strategy only, otherwise 0)
+  insurance    = hardCosts × 0.0075   (0.75%)
+  contingency  = hardCosts × 0.075    (7.5%)
+
+  softCosts = architect + engineers + permits + legalNotary + projectMgmt + marketing + insurance + contingency
+
+
+4. LAND & SITE COSTS
+---------------------
+
+  utilities = 26,000 EUR (fixed: water 12,500 + electric 6,500 + gas 5,000 + fiber 2,000)
+  geoSurvey = 10,000 EUR (fixed)
+  sitePrep  = footprint × 100 EUR/m2  (Demolition condition only, otherwise 0)
+
+  landSiteCosts = landPrice + utilities + geoSurvey + sitePrep
+
+
+5. FINANCING
+------------
+
+  totalBeforeFinancing = hardCosts + softCosts + landSiteCosts
+  loanAmount = totalBeforeFinancing × (debtRatio / 100)
+  constructionInterest = loanAmount × (interestRate / 100) × (constructionDuration / 12)
+  loanFees = loanAmount × 0.015
+  financingCosts = constructionInterest + loanFees
+  totalProjectCost = totalBeforeFinancing + financingCosts
+  equityInvested = totalProjectCost - loanAmount
+
+
+6. SALE REVENUE
+---------------
+
+  totalSales = netArea × salePricePerM2
+  brokerFee  = totalSales × 0.03
+  netSales   = totalSales - brokerFee
+
+
+7. RENTAL REVENUE
+-----------------
+
+  grossAnnualRent = netArea × rentPerM2PerMonth × 12 × (1 - vacancyRate)
+  opex = grossAnnualRent × 0.25
+  noi  = grossAnnualRent - opex
+
+  Vacancy Rates:
+    Office             = 0.10  (10%)
+    Residential        = 0.08  (8%)
+    Mixed-Use          = 0.08  (8%)
+
+
+8. PROFITABILITY METRICS - SALE STRATEGY
+-----------------------------------------
+
+  grossProfit    = netSales - totalProjectCost
+  profitMargin   = (grossProfit / totalProjectCost) × 100
+  roi            = (grossProfit / totalProjectCost) × 100
+  roe            = (grossProfit / equityInvested) × 100
+  years          = constructionDuration / 12
+  annualizedRoi  = ((1 + grossProfit / totalProjectCost) ^ (1 / years) - 1) × 100
+  annualizedRoe  = ((1 + grossProfit / equityInvested) ^ (1 / years) - 1) × 100
+  breakEvenPerM2 = totalProjectCost / netArea
+
+
+9. PROFITABILITY METRICS - RENTAL STRATEGY
+-------------------------------------------
+
+  capRate = (noi / totalProjectCost) × 100
+  roe     = (noi / equityInvested) × 100
+
+
+10. WEIGHTED AVERAGE COST OF CAPITAL (WACC)
+--------------------------------------------
+
+  costOfEquity = targetIRR / 100
+  costOfDebt   = (interestRate / 100) × (1 - 0.24)
+  wacc         = (equityRatio / 100) × costOfEquity + (debtRatio / 100) × costOfDebt
+
+  Notes:
+  - 0.24 is the Italian corporate tax rate (24%) used for tax shield on debt
+
+
+11. DCF ANALYSIS - 10 YEAR RENTAL HOLD
+----------------------------------------
+
+  growthRate = 0.02  (2% annual rent growth)
+
+  For each year y = 1 to 10:
+    cashFlow[y]   = noi × (1 + growthRate) ^ y
+    discounted[y] = cashFlow[y] / (1 + wacc) ^ y
+
+  dcfSum = sum of all discounted[y]
+
+  terminalValue      = (noi × (1 + growthRate) ^ 11) / (wacc - growthRate)
+  discountedTerminal = terminalValue / (1 + wacc) ^ 10
+  npv                = dcfSum + discountedTerminal - totalProjectCost
+
+  Notes:
+  - Terminal value uses the Gordon Growth Model (perpetuity with growth)
+  - NPV > 0 means the project creates value above the required return
+
+
+12. RISK SCORING (scale 0-10)
+------------------------------
+
+  riskScore starts at 0, then:
+
+  Debt Ratio:
+    > 70%   → +3 points
+    50-70%  → +2 points
+    < 50%   → +1 point
+
+  Profit Margin (Sale strategy):
+    < 10%   → +3 points
+    10-20%  → +2 points
+    > 20%   → +1 point
+
+  Cap Rate (Rental strategy):
+    < 4%    → +3 points
+    4-6%    → +2 points
+    > 6%    → +1 point
+
+  Land Condition:
+    Contaminated  → +3 points
+    Demolition    → +2 points
+    Sloped        → +1 point
+    Flat          → +0 points
+
+  riskScore = min(10, riskScore)
