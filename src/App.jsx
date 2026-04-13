@@ -696,99 +696,63 @@ function CostBreakdownChart({ costs }) {
 }
 
 function ProfitWaterfallChart({ results }) {
-  const items = [
-    { name: 'Revenue',    value:  results.revenue.totalSales,        fill: C.navy },
-    { name: 'Broker Fee', value: -results.revenue.brokerFee,         fill: C.orangeMid },
-    { name: 'Hard Costs', value: -results.costs.hardCosts,           fill: C.orange },
-    { name: 'Soft Costs', value: -results.costs.softCosts,           fill: C.orangeLight },
-    { name: 'Land & Site',value: -results.costs.landSiteCosts,       fill: C.navyMid },
-    { name: 'Financing',  value: -results.costs.financingCosts,      fill: C.navyLight },
+  const profit = results.metrics.grossProfit;
+  const data = [
+    { name: 'Revenue',    value: results.revenue.totalSales,      fill: C.navy },
+    { name: 'Hard Costs', value: results.costs.hardCosts,         fill: C.orange },
+    { name: 'Soft Costs', value: results.costs.softCosts,         fill: C.orangeLight },
+    { name: 'Land & Site',value: results.costs.landSiteCosts,     fill: C.navyMid },
+    { name: 'Financing',  value: results.costs.financingCosts,    fill: C.navyLight },
+    { name: 'Broker Fee', value: results.revenue.brokerFee,       fill: C.orangeMid },
+    { name: 'Profit',     value: Math.abs(profit),                fill: profit >= 0 ? C.green : C.red },
   ];
 
-  let running = 0;
-  const data = items.map((item) => {
-    const prev = running;
-    running += item.value;
-    const low = Math.min(prev, running);
-    const high = Math.max(prev, running);
-    return { name: item.name, base: low, delta: high - low, fill: item.fill, value: item.value };
-  });
-  const profit = results.metrics.grossProfit;
-  data.push({
-    name: 'Profit',
-    base: Math.min(0, profit),
-    delta: Math.abs(profit),
-    fill: profit >= 0 ? C.green : C.red,
-    value: profit,
-  });
+  const maxVal = Math.max(...data.map((d) => d.value));
 
-  // BUG FIX: support negative profit — domain must go below 0
-  const minBase = Math.min(0, ...data.map((d) => d.base));
-  const maxTop  = Math.max(...data.map((d) => d.base + d.delta));
+  const fmtLabel = (v) => {
+    if (v >= 1e6) return `€${(v / 1e6).toFixed(1)}M`;
+    if (v >= 1e3) return `€${(v / 1e3).toFixed(0)}k`;
+    return `€${v}`;
+  };
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <ChartTitle sub="Revenue → costs → gross profit">Profit Waterfall</ChartTitle>
+        <ChartTitle sub="Bar height = actual value — Profit vs every cost item">Revenue & Cost Breakdown</ChartTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={320}>
-          <BarChart data={data} margin={{ top: 28, right: 15, left: 15, bottom: 5 }}>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={data} margin={{ top: 24, right: 15, left: 15, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.7} />
-            <XAxis dataKey="name" tick={{ fontSize: 11, fill: C.tick }} axisLine={{ stroke: C.axis }} tickLine={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 10, fill: C.tick }} axisLine={{ stroke: C.axis }} tickLine={false} />
             <YAxis
-              domain={[minBase < 0 ? minBase * 1.1 : 0, maxTop * 1.08]}
-              tickFormatter={(v) => `€${(v / 1000000).toFixed(1)}M`}
+              domain={[0, maxVal * 1.1]}
+              tickFormatter={(v) => `€${(v / 1e6).toFixed(1)}M`}
               tick={{ fontSize: 11, fill: C.tick }}
               axisLine={false}
               tickLine={false}
             />
-            <ReferenceLine y={0} stroke={C.axis} strokeWidth={1.5} />
             <Tooltip
-              content={({ active, payload }) => {
-                if (!active || !payload?.length) return null;
-                const d = payload[0]?.payload;
-                if (!d) return null;
-                return (
-                  <div className="border shadow-md rounded-lg px-3 py-2 text-sm" style={{ background: 'var(--card)', borderColor: 'var(--border)' }}>
-                    <p className="font-semibold text-foreground mb-0.5">{d.name}</p>
-                    <p style={{ color: d.value >= 0 ? C.green : C.red }}>
-                      {d.value >= 0 ? '+' : ''}€{fmt(d.value)}
-                    </p>
-                  </div>
-                );
-              }}
+              formatter={(v, _name, props) => [fmtLabel(v), props.payload.name]}
+              contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13 }}
             />
-            <Bar dataKey="base" stackId="wf" fill="transparent" isAnimationActive={false} />
-            <Bar dataKey="delta" stackId="wf" isAnimationActive={false} radius={[3, 3, 0, 0]}>
+            <Bar dataKey="value" isAnimationActive={false} radius={[3, 3, 0, 0]}>
               {data.map((entry, idx) => (
                 <Cell key={idx} fill={entry.fill} />
               ))}
               <LabelList
                 dataKey="value"
                 position="top"
-                formatter={(v) => {
-                  const abs = Math.abs(v);
-                  const label = abs >= 1e6 ? `€${(abs / 1e6).toFixed(1)}M` : `€${(abs / 1e3).toFixed(0)}k`;
-                  return v >= 0 ? label : `-${label}`;
-                }}
+                formatter={fmtLabel}
                 style={{ fontSize: 9, fill: C.tick, fontWeight: 600 }}
               />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
-        {/* Legend */}
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3 text-xs text-muted-foreground justify-center">
-          {items.map((item) => (
-            <span key={item.name} className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: item.fill }} />
-              {item.name}
-            </span>
-          ))}
-          <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: C.green }} />
-            Profit
-          </span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: C.navy }} />Revenue</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: C.orange }} />Costs</span>
+          <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: C.green }} />Profit</span>
         </div>
       </CardContent>
     </Card>
