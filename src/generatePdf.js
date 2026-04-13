@@ -871,9 +871,6 @@ export function generatePdf(results, calcInputs) {
       { label: 'Gross Profit', value: fmtEur(results.metrics.grossProfit), color: results.metrics.grossProfit >= 0 ? C.positive : C.negative },
     ], 4);
 
-    drawSectionTitle(ctx, 'Profit Waterfall');
-    drawWaterfallChartPdf(ctx, results);
-
     drawSectionTitle(ctx, 'Return Metrics vs Target IRR');
     drawReturnMetricsPdf(ctx, results.metrics, calcInputs.targetIrr);
 
