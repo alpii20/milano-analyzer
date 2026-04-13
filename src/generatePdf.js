@@ -374,7 +374,7 @@ function drawEquityDebtBar(ctx, equityRatio, debtRatio) {
 // ─── CHART: WATERFALL (SELL STRATEGY) ───────────────────────────────────────
 function drawWaterfallChartPdf(ctx, results) {
   const { pdf } = ctx;
-  ensureSpace(ctx, 80);
+  ensureSpace(ctx, 90);
 
   const items = [
     { name: 'Revenue',    value:  results.revenue.totalSales,   color: C.navy },
@@ -398,11 +398,12 @@ function drawWaterfallChartPdf(ctx, results) {
   const allValues = bars.flatMap((b) => [b.base, b.top]);
   const minV = Math.min(0, ...allValues);
   const maxV = Math.max(...allValues);
-  const range = maxV - minV || 1;
+  // Add 8% headroom above the top value so labels inside tall bars stay clear
+  const range = (maxV - minV) * 1.08 || 1;
 
   const chartX = ctx.marginLeft;
   const chartW = ctx.contentW;
-  const chartH = 55;
+  const chartH = 65;
   const barW = chartW / bars.length * 0.55;
   const barGap = chartW / bars.length;
   const zeroY = ctx.y + chartH * (1 - (0 - minV) / range);
@@ -424,12 +425,20 @@ function drawWaterfallChartPdf(ctx, results) {
     setFill(pdf, bar.color);
     pdf.rect(bx, by, barW, Math.max(bh, 0.5), 'F');
 
-    // Value label above/below bar
+    // Value label: positive bars → inside bar near top (avoids floating above chart);
+    // negative (cost) bars → below the bar bottom, following the step-down.
     pdf.setFont('helvetica', 'bold');
     pdf.setFontSize(6);
     setColor(pdf, bar.color);
     const label = fmtEurShort(bar.value);
-    const labelY = bar.value >= 0 ? by - 1.5 : by + bh + 4;
+    let labelY;
+    if (bar.value >= 0) {
+      // Place inside the bar, 4mm from top (always within the chart area)
+      labelY = by + 4;
+    } else {
+      // Place below the bar's bottom edge — follows the waterfall step down
+      labelY = by + Math.max(bh, 0.5) + 4;
+    }
     pdf.text(label, bx + barW / 2, labelY, { align: 'center' });
 
     // Bar name below chart

@@ -732,12 +732,12 @@ function ProfitWaterfallChart({ results }) {
         <ChartTitle sub="Revenue → costs → gross profit">Profit Waterfall</ChartTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data} margin={{ top: 22, right: 15, left: 15, bottom: 5 }}>
+        <ResponsiveContainer width="100%" height={320}>
+          <BarChart data={data} margin={{ top: 28, right: 15, left: 15, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" strokeOpacity={0.7} />
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: C.tick }} axisLine={{ stroke: C.axis }} tickLine={false} />
             <YAxis
-              domain={[minBase < 0 ? minBase * 1.1 : 0, maxTop * 1.05]}
+              domain={[minBase < 0 ? minBase * 1.1 : 0, maxTop * 1.08]}
               tickFormatter={(v) => `€${(v / 1000000).toFixed(1)}M`}
               tick={{ fontSize: 11, fill: C.tick }}
               axisLine={false}
@@ -766,13 +766,21 @@ function ProfitWaterfallChart({ results }) {
               ))}
               <LabelList
                 dataKey="value"
-                position="top"
-                formatter={(v) => {
-                  const abs = Math.abs(v);
+                content={(props) => {
+                  const { x, y, width, height, value } = props;
+                  if (value == null) return null;
+                  const abs = Math.abs(value);
                   const label = abs >= 1e6 ? `€${(abs / 1e6).toFixed(1)}M` : `€${(abs / 1e3).toFixed(0)}k`;
-                  return v >= 0 ? label : `-${label}`;
+                  const text = value >= 0 ? label : `-${label}`;
+                  const cx = (x ?? 0) + (width ?? 0) / 2;
+                  // Positive bars: label above the bar top; negative (cost) bars: label below the bar bottom
+                  const cy = value >= 0 ? (y ?? 0) - 5 : (y ?? 0) + (height ?? 0) + 12;
+                  return (
+                    <text x={cx} y={cy} textAnchor="middle" fontSize={9} fill={C.tick} fontWeight={600}>
+                      {text}
+                    </text>
+                  );
                 }}
-                style={{ fontSize: 9, fill: C.tick, fontWeight: 600 }}
               />
             </Bar>
           </BarChart>
