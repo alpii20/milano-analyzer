@@ -766,21 +766,13 @@ function ProfitWaterfallChart({ results }) {
               ))}
               <LabelList
                 dataKey="value"
-                content={(props) => {
-                  const { x, y, width, height, value } = props;
-                  if (value == null) return null;
-                  const abs = Math.abs(value);
+                position="top"
+                formatter={(v) => {
+                  const abs = Math.abs(v);
                   const label = abs >= 1e6 ? `€${(abs / 1e6).toFixed(1)}M` : `€${(abs / 1e3).toFixed(0)}k`;
-                  const text = value >= 0 ? label : `-${label}`;
-                  const cx = (x ?? 0) + (width ?? 0) / 2;
-                  // Positive bars: label above the bar top; negative (cost) bars: label below the bar bottom
-                  const cy = value >= 0 ? (y ?? 0) - 5 : (y ?? 0) + (height ?? 0) + 12;
-                  return (
-                    <text x={cx} y={cy} textAnchor="middle" fontSize={9} fill={C.tick} fontWeight={600}>
-                      {text}
-                    </text>
-                  );
+                  return v >= 0 ? label : `-${label}`;
                 }}
+                style={{ fontSize: 9, fill: C.tick, fontWeight: 600 }}
               />
             </Bar>
           </BarChart>
